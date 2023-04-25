@@ -19,7 +19,7 @@ and constructs a graph, called auxiliary graph, defined as follows.
 
 The input file contains a textual representation of Bitcoin transactions. In <a href="https://zenodo.org/record/7696454#.ZBOmgy9abq0">this repository</a> it is possible to find a more detailed description of the required input file format.
 
-The output graph is represented as a binary file containing a sequence of 32-bit signed integers (in little-endian format). 
+The output graph is represented as a binary file containing a sequence of 32-bit signed integers (in big-endian format). 
 The file has the following format:
 
 1. the first 32 bits represent the number of nodes _N_;

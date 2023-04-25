@@ -1,9 +1,9 @@
 /**
- * @file analyzer.cc
+ * @file analyzer.cpp
  * @author Matteo Loporchio
  * @brief Computes the connected components of the auxiliary graph
- * @version 0.1
- * @date 2023-03-16
+ * @version 0.2
+ * @date 2023-04-25
  * 
  * This program reads the auxiliary graph from a file and analyzes it
  * by computing its connected components. The output of this program
@@ -26,34 +26,36 @@ using namespace std::chrono;
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        cerr << "Usage: analyzer <inputFile> <outputFile>" << endl;
+        cerr << "Usage: " << argv[0] <<  " <inputFile> <outputFile>\n";
         return 1;
     }
     // Open input and output files.
     ifstream input_file(argv[1], ios::binary);
     ofstream output_file(argv[2], ios::out);
     if (!input_file) {
-        cerr << "Error: could not open input file!" << endl;
+        cerr << "Error: could not open input file!\n";
         return 1;
     }
     if (!output_file) {
-        cerr << "Error: could not open output file!" << endl;
+        cerr << "Error: could not open output file!\n";
         return 1;
     }
     auto start = high_resolution_clock::now();
     // Read graph from input file.
     // First, read the number of nodes and the number of edges.
-    int int_pair[2];
-    input_file.read((char*) &int_pair, 2*sizeof(int));
-    int num_nodes = int_pair[0], num_edges = int_pair[1];
+    int buf[2];
+    input_file.read((char*) &buf, 2*sizeof(int));
+    int num_nodes = __builtin_bswap32(buf[0]);
+    int num_edges = __builtin_bswap32(buf[1]);
     // Reserve memory for nodes and edges and add new nodes.
     ListGraph graph;
     graph.reserveNode(num_nodes);
     graph.reserveEdge(num_edges);
     for (int i = 0; i < num_nodes; i++) graph.addNode();
     // Read edges and add them to the graph.
-    while (input_file.read((char*) &int_pair, 2*sizeof(int))) {
-        int u_node_id = int_pair[0], v_node_id = int_pair[1];
+    while (input_file.read((char*) &buf, 2*sizeof(int))) {
+        int u_node_id = __builtin_bswap32(buf[0]);
+        int v_node_id = __builtin_bswap32(buf[1]);
         ListGraph::Node u_node = graph.nodeFromId(u_node_id), 
         v_node = graph.nodeFromId(v_node_id);
         graph.addEdge(u_node, v_node);
@@ -72,9 +74,9 @@ int main(int argc, char **argv) {
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
     // Print some basic information.
-    cout << "Nodes:\t\t" << countNodes(graph) << endl 
-    << "Edges:\t\t" << countEdges(graph) << endl
-    << "Components:\t" << num_comp << endl
-    << "Time:\t\t" << duration.count() << " ns" << endl;
+    cout << "Nodes:\t\t" << countNodes(graph) << '\n' 
+    << "Edges:\t\t" << countEdges(graph) << '\n'
+    << "Components:\t" << num_comp << '\n'
+    << "Time:\t\t" << duration.count() << " ns\n";
     return 0;
 }

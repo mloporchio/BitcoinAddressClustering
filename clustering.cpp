@@ -28,13 +28,13 @@ using namespace std::chrono;
  * 
  * @param graph igraph data structure where the graph will be stored
  * @param input_file pointer to the (already opened) binary file
- * @param forced_nodes defines the number of nodes for the input graph. If zero, the number of nodes will be deduced from the input file.
+ * @param forced_num_nodes defines the number of nodes for the input graph. If zero, the number of nodes will be deduced from the input file.
  */
-void read_graph_binary(igraph_t *graph, FILE *input_file, int forced_nodes) {
-    int buf[2];
+void read_graph_binary(igraph_t *graph, FILE *input_file, int forced_num_nodes) {
     // Read the number of nodes and edges from the binary file.
+    int buf[2];
     int num_read = fread(buf, sizeof(int), 2, input_file);
-    int num_nodes = ((forced_nodes == 0) ? __builtin_bswap32(buf[0]) : forced_nodes);
+    int num_nodes = ((forced_num_nodes == 0) ? __builtin_bswap32(buf[0]) : forced_num_nodes);
     int num_edges = __builtin_bswap32(buf[1]);
     // Initialize the graph.
     igraph_empty(graph, (igraph_integer_t) num_nodes, IGRAPH_UNDIRECTED);
@@ -53,13 +53,14 @@ void read_graph_binary(igraph_t *graph, FILE *input_file, int forced_nodes) {
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " <input_file> <output_file> [<num_addresses>]\n";
+        cerr << "Usage: " << argv[0] << " <input_file> <output_file> [<num_nodes>]\n";
         return 1;
     }
+    
     auto start = high_resolution_clock::now();
     
-    // 
-    int num_addresses = ((argc >= 4) ? atoi(argv[3]) : 0);
+    igraph_integer_t num_nodes = ((argc >= 4) ? atoi(argv[3]) : 0);
+    igraph_integer_t num_edges;
 
     // Open the input and output files.
     FILE *input_file = fopen(argv[1], "r");
@@ -76,13 +77,10 @@ int main(int argc, char **argv) {
 
     // Load the graph from the corresponding file.
     igraph_t graph;
-    read_graph_binary(&graph, input_file, num_addresses);
-    //igraph_read_graph_edgelist(&graph, input_file, num_addresses, 0);
+    read_graph_binary(&graph, input_file, num_nodes);
     fclose(input_file);
-
-    // 
-    igraph_integer_t num_nodes = igraph_vcount(&graph);
-    igraph_integer_t num_edges = igraph_ecount(&graph);
+    num_nodes = igraph_vcount(&graph);
+    num_edges = igraph_ecount(&graph);
 
     // Compute the weakly connected components of the graph.
     igraph_integer_t num_cc;
@@ -92,7 +90,7 @@ int main(int argc, char **argv) {
     //igraph_vector_int_init(&wcc_sizes, total_nodes);
     igraph_connected_components(&graph, &comp_map, NULL, &num_cc, IGRAPH_WEAK);
 
-    // 
+    // Write the (node, component) associations to the output file.
     fprintf(output_file, "node_id,comp_id\n");
     for (int i = 0; i < num_nodes; i++) {
         int comp_id = VECTOR(comp_map)[i];

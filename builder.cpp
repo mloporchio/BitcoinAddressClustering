@@ -58,11 +58,11 @@ using namespace std::chrono;
 typedef vector<pair<int,int>> edge_list_t;
 
 /**
- * @brief 
+ * @brief Processes the list of transaction inputs (represented as a semicolon-separated string)
  * 
- * @param inputs 
- * @param max_id 
- * @param edges 
+ * @param inputs string containing all transaction inputs
+ * @param max_id maximum address identifier seen while parsing transactions
+ * @param edges list of graph edges
  */
 void process_inputs(char *inputs, int *max_id, edge_list_t &edges) {
     char *ptr = inputs, *save_ptr;
@@ -79,17 +79,17 @@ void process_inputs(char *inputs, int *max_id, edge_list_t &edges) {
         if (curr_address == first_address) continue;
         // Create the new edge.
         edges.push_back(minmax(first_address, curr_address));
-        // 
+        // Update the maximum identifier, if necessary.
         if (curr_address >= *max_id) *max_id = curr_address;
     }
 }
 
 /**
- * @brief 
+ * @brief Processes the list of transaction outputs (represented as a semicolon-separated string)
  * 
- * @param outputs 
- * @param max_id 
- * @param edges 
+ * @param outputs string containing all transaction outputs
+ * @param max_id maximum address identifier seen while parsing transactions
+ * @param edges list of graph edges 
  */
 void process_outputs(char *outputs, int *max_id, edge_list_t &edges) {
     char *ptr, *save_ptr, *output_str, *address_str;
@@ -99,7 +99,7 @@ void process_outputs(char *outputs, int *max_id, edge_list_t &edges) {
         // The first field of the output corresponds to the address.
         address_str = strtok(output_str, ",");
         address = atoi(address_str);
-        // 
+        // Update the maximum identifier, if necessary.
         if (address >= *max_id) *max_id = address;
     }
 }
@@ -108,8 +108,8 @@ void process_outputs(char *outputs, int *max_id, edge_list_t &edges) {
  * @brief Processes a single line of the input file (i.e., a transaction)
  * 
  * @param line_buf buffer containing the line
- * @param max_id counter that keeps track of the maximum address identifier
- * @param edges reference to the edge list
+ * @param max_id maximum address identifier seen while parsing transactions
+ * @param edges list of graph edges
  */
 void process_line(char *line_buf, int *max_id, edge_list_t &edges) {
     char *token = NULL;

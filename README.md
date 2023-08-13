@@ -1,10 +1,10 @@
 # BitcoinAddressClustering
 
-This repository contains a C++ implementation of the Bitcoin address clustering procedure described in [1]. 
-The repository also comprises a tool for analyzing the resulting graph.
+This repository contains a C++ implementation of the Bitcoin address clustering procedure described in [1].
 
-Our implementation relies on the <a href="https://lemon.cs.elte.hu/trac/lemon">LEMON Graph Library</a> for all graph-related data structures.
-The project consists of two distinct applications: the graph **builder** and the **analyzer**.
+Our implementation relies on the <a href="https://igraph.org/">igraph</a> library for all graph-related data structures.
+
+The project consists of two distinct executables: the graph **builder** and the **analyzer**.
 
 ## Graph builder
 

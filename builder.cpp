@@ -2,8 +2,8 @@
  * @file builder.cpp
  * @author Matteo Loporchio
  * @brief Implementation of the Bitcoin address clustering algorithm [1]
- * @version 0.2
- * @date 2023-04-25
+ * @version 1.0
+ * @date 2023-08-13
  * 
  * This program implements the Bitcoin address clustering procedure 
  * by Di Francesco Maesa et al. described in [1]. 
@@ -42,92 +42,65 @@
  * @copyright Copyright (c) 2023 Matteo Loporchio
  */
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <set>
-#include <unordered_map>
+#include <utility>
+#include <vector>
 
 using namespace std;
 using namespace std::chrono;
 
-/// @brief The node map represents a mapping from addresses to node identifiers
-typedef unordered_map<int,int> node_map_t;
-
-/// @brief The edge set contains a set of ordered pairs representing graph edges
-typedef set<pair<int,int>> edge_set_t;
+/// @brief The edge list contains ordered pairs representing graph edges
+typedef vector<pair<int,int>> edge_list_t;
 
 /**
- * @brief Checks if the node map contains an identifier for the given address
+ * @brief 
  * 
- * @param map reference to the node map
- * @param address address to be checked
- * @return the node identifier if the address is present, -1 otherwise
+ * @param inputs 
+ * @param max_id 
+ * @param edges 
  */
-inline int contains_node(node_map_t &map, int address) {
-    node_map_t::iterator it = map.find(address);
-    return ((it != map.end()) ? it->second : -1);
-}
-
-/**
- * @brief Processes the list of transaction inputs (represented as a semicolon-separated string)
- * 
- * @param inputs string containing all transaction inputs
- * @param nodes reference to the node map
- * @param edges reference to the edge set
- * @param id_count counter for used node identifiers
- */
-void process_inputs(char *inputs, node_map_t &nodes, edge_set_t &edges, int *id_count) {
-    // Extract all unique input addresses.
-    set<int> input_addresses;
-    char *ptr, *save_ptr, *input_str, *address_str;
-    for (ptr = inputs; ; ptr = NULL) {
-        if (!(input_str = strtok_r(ptr, ";", &save_ptr))) break;
-        // The first field of the current input corresponds to the address.
-        address_str = strtok(input_str, ",");
-        int address = atoi(address_str);
-        input_addresses.insert(address);
-    }
-    // Then we create a path through all unique input addresses.
-    int prev_id = -1, curr_id;
-    for (int curr_addr : input_addresses) {
-        curr_id = contains_node(nodes, curr_addr);
-        // If no node is associated with the address, then add one.
-        if (curr_id == -1) {
-            nodes[curr_addr] = *id_count;
-            curr_id = *id_count;
-            *id_count = *id_count + 1;
-        }
-        if (prev_id != -1) edges.insert(make_pair(prev_id, curr_id));
-        prev_id = curr_id;
+void process_inputs(char *inputs, int *max_id, edge_list_t &edges) {
+    char *ptr = inputs, *save_ptr;
+    // Obtain the first input address.
+    char *input = strtok_r(ptr, ";", &save_ptr);
+    int first_address = atoi(strtok(input, ","));
+    if (first_address >= *max_id) *max_id = first_address;
+    // Iterate trough all remaining inputs.
+    int curr_address;
+    while ((input = strtok_r(NULL, ";", &save_ptr))) {
+        // Extract the current address.
+        curr_address = atoi(strtok(input, ","));
+        // Skip this address if it is equal to the first one.
+        if (curr_address == first_address) continue;
+        // Create the new edge.
+        edges.push_back(minmax(first_address, curr_address));
+        // 
+        if (curr_address >= *max_id) *max_id = curr_address;
     }
 }
 
 /**
- * @brief Processes the list of transaction outputs (represented as a semicolon-separated string)
+ * @brief 
  * 
- * @param outputs string containing all transaction outputs
- * @param nodes reference to the node map
- * @param edges reference to the edge set
- * @param id_count counter for used node identifiers
+ * @param outputs 
+ * @param max_id 
+ * @param edges 
  */
-void process_outputs(char *outputs, node_map_t &nodes, edge_set_t &edges, int *id_count) {
+void process_outputs(char *outputs, int *max_id, edge_list_t &edges) {
     char *ptr, *save_ptr, *output_str, *address_str;
+    int address;
     for (ptr = outputs; ; ptr = NULL) {
         if (!(output_str = strtok_r(ptr, ";", &save_ptr))) break;
         // The first field of the output corresponds to the address.
         address_str = strtok(output_str, ",");
-        int address = atoi(address_str);
-        // Check if a node associated with the address exists.
-        int id = contains_node(nodes, address);
-        // If this is not the case, add a new node to the graph
-        // and associate it with the address.
-        if (id == -1) {
-            nodes[address] = *id_count;
-            *id_count = *id_count + 1;
-        }
+        address = atoi(address_str);
+        // 
+        if (address >= *max_id) *max_id = address;
     }
 }
 
@@ -135,22 +108,20 @@ void process_outputs(char *outputs, node_map_t &nodes, edge_set_t &edges, int *i
  * @brief Processes a single line of the input file (i.e., a transaction)
  * 
  * @param line_buf buffer containing the line
- * @param line_size size of the line buffer
- * @param nodes reference to the node map
- * @param edges reference to the edge set
- * @param id_count counter for used node identifiers
+ * @param max_id counter that keeps track of the maximum address identifier
+ * @param edges reference to the edge list
  */
-void process_line(char *line_buf, size_t line_size, node_map_t &nodes, edge_set_t &edges, int *id_count) {
+void process_line(char *line_buf, int *max_id, edge_list_t &edges) {
     char *token = NULL;
     int token_count = 0;
     while ((token = strsep(&line_buf, ":"))) {
         if (token_count == 1) {
-            // Processing inputs...
-            if (token[0] != '\0') process_inputs(token, nodes, edges, id_count);
+            // Processing inputs
+            if (token[0] != '\0') process_inputs(token, max_id, edges);
         }
         if (token_count == 2) {
-            // Processing outputs...
-            if (token[0] != '\0') process_outputs(token, nodes, edges, id_count);
+            // Processing outputs
+            if (token[0] != '\0') process_outputs(token, max_id, edges);
         }
         token_count++;
     }
@@ -159,10 +130,12 @@ void process_line(char *line_buf, size_t line_size, node_map_t &nodes, edge_set_
 int main(int argc, char **argv) {
     // Check the input arguments.
     if (argc < 3) {
-        cerr << "Usage: " << argv[0] << " <inputFile> <outputFile>\n";
+        cerr << "Usage: " << argv[0] << " <input_file> <output_file>\n";
         return 1;
     }
+
     auto start = high_resolution_clock::now();
+
     // Open the input and output files.
     FILE *input_file = fopen(argv[1], "r");
     if (!input_file) {
@@ -174,35 +147,47 @@ int main(int argc, char **argv) {
         cerr << "Error: could not open output file!\n";
         return 1;
     }
-    // Build the graph by reading the input file line by line.
-    node_map_t nodes;
-    edge_set_t edges;
-    int id_count = 0;
+
+    // Read the input file line by line and build the graph.
+    edge_list_t edges;
+    int max_id = 0;
     char *line_buf = NULL;
     size_t line_size = 0;
     while (getline(&line_buf, &line_size, input_file) > 0) {
-        process_line(line_buf, line_size, nodes, edges, &id_count);
+        process_line(line_buf, &max_id, edges);
     }
-    // Write the graph to the output file.
-    int num_nodes = nodes.size();
-    int num_edges = edges.size();
+
+    // Sort the list of edges.
+    sort(edges.begin(), edges.end());
+
+    // First, write the list of edges to the graph file.
     int buf[2];
+    int num_nodes = max_id + 1;
+    int num_edges = 0;
+    fseek(output_file, 8, SEEK_SET);
+    for (int i = 0; i < edges.size(); i++) {
+        if (i == 0 || edges[i] != edges[i-1]) {
+            // Skip duplicates.
+            buf[0] = __builtin_bswap32(edges[i].first);
+            buf[1] = __builtin_bswap32(edges[i].second);
+            fwrite(buf, sizeof(int), 2, output_file);
+            num_edges++;
+        }
+    }
+    // Then, write the number of nodes and edges at the beginning of the file.
+    fseek(output_file, 0, SEEK_SET);
     buf[0] = __builtin_bswap32(num_nodes);
     buf[1] = __builtin_bswap32(num_edges);
     fwrite(buf, sizeof(int), 2, output_file);
-    for (auto &e : edges) {
-        buf[0] = __builtin_bswap32(e.first);
-        buf[1] = __builtin_bswap32(e.second);
-        fwrite(buf, sizeof(int), 2, output_file);
-    }
+
     // Close the input and output files.
     fclose(input_file);
     fclose(output_file);
+
     auto end = high_resolution_clock::now();
     auto duration = duration_cast<nanoseconds>(end - start);
+
     // Print statistics.
-    cout << "Nodes:\t" << num_nodes << '\n' 
-    << "Edges:\t" << num_edges << '\n'
-    << "Time:\t" << duration.count() << " ns\n";
+    cout << num_nodes << '\t' << num_edges << '\t' << duration.count() << '\n';
     return 0;
 }

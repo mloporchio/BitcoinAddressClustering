@@ -32,5 +32,5 @@ The output of this program is a CSV file containing one line for each node of th
 
 ## References
 
-[1] Di Francesco Maesa, Damiano, Andrea Marino, and Laura Ricci. "Data-driven analysis of bitcoin properties: exploiting the users graph."
+[1] Damiano Di Francesco Maesa, Andrea Marino, and Laura Ricci. "Data-driven analysis of bitcoin properties: exploiting the users graph."
 _International Journal of Data Science and Analytics_ 6 (2018): 63-80.
